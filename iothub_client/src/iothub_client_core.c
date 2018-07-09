@@ -71,9 +71,7 @@ typedef struct INVOKE_METHOD_SAVED_DATA_TAG
     const char* methodName;
     const char* methodPayload;
     unsigned int timeout;
-    int* responseStatus;
-    unsigned char** responsePayload;
-    size_t* responsePayloadSize;
+    IOTHUB_METHOD_INVOKE_CALLBACK methodInvokeCallback;
 } INVOKE_METHOD_SAVED_DATA_TAG;
     
 typedef struct HTTPWORKER_THREAD_INFO_TAG
@@ -194,7 +192,6 @@ static void freeHttpWorkerThreadInfo(HTTPWORKER_THREAD_INFO* threadInfo)
         free((char*)threadInfo->invokeMethodSavedData.moduleId);
         free((char*)threadInfo->invokeMethodSavedData.methodName);
         free((char*)threadInfo->invokeMethodSavedData.methodPayload);
-        // The other parameters shouldn't be freed as they are owned by the caller.
     }
     
     free(threadInfo);
@@ -2341,7 +2338,7 @@ IOTHUB_CLIENT_RESULT IoTHubClientCore_SetInputMessageCallback(IOTHUB_CLIENT_CORE
 
 #ifdef USE_EDGE_MODULES
 
-HTTPWORKER_THREAD_INFO * allocateMethodInvoke(IOTHUB_CLIENT_CORE_HANDLE iotHubClientHandle, const char* deviceId, const char* moduleId, const char* methodName, const char* methodPayload, unsigned int timeout, int* responseStatus, unsigned char** responsePayload, size_t* responsePayloadSize)
+HTTPWORKER_THREAD_INFO * allocateMethodInvoke(IOTHUB_CLIENT_CORE_HANDLE iotHubClientHandle, const char* deviceId, const char* moduleId, const char* methodName, const char* methodPayload, unsigned int timeout, IOTHUB_METHOD_INVOKE_CALLBACK methodInvokeCallback, void* context)
 {
     HTTPWORKER_THREAD_INFO* threadInfo = (HTTPWORKER_THREAD_INFO*)malloc(sizeof(HTTPWORKER_THREAD_INFO));
     if (threadInfo == NULL)
@@ -2353,10 +2350,10 @@ HTTPWORKER_THREAD_INFO * allocateMethodInvoke(IOTHUB_CLIENT_CORE_HANDLE iotHubCl
         memset(threadInfo, 0, sizeof(HTTPWORKER_THREAD_INFO));
         threadInfo->workerThreadType = HTTPWORKER_THREAD_INVOKE_METHOD;
         threadInfo->iotHubClientHandle = iotHubClientHandle;
+        threadInfo->context = context;
+
         threadInfo->invokeMethodSavedData.timeout = timeout;
-        threadInfo->invokeMethodSavedData.responsePayload = responsePayload;
-        threadInfo->invokeMethodSavedData.responsePayloadSize = responsePayloadSize;
-        threadInfo->invokeMethodSavedData.responseStatus = responseStatus;
+        threadInfo->invokeMethodSavedData.methodInvokeCallback = methodInvokeCallback;
 
         if ((mallocAndStrcpy_s((char**)&threadInfo->invokeMethodSavedData.deviceId, deviceId) != 0) || 
             ((moduleId != NULL) && mallocAndStrcpy_s((char**)&threadInfo->invokeMethodSavedData.moduleId, moduleId) != 0) ||
@@ -2381,29 +2378,43 @@ static int uploadMethodInvoke_thread(void* data)
 {
     IOTHUB_CLIENT_RESULT result;
 
-    HTTPWORKER_THREAD_INFO* threadInfo = (HTTPWORKER_THREAD_INFO*)data;    
+    HTTPWORKER_THREAD_INFO* threadInfo = (HTTPWORKER_THREAD_INFO*)data;
 
-    result = IoTHubClientCore_LL_GenericMethodInvoke(threadInfo->iotHubClientHandle->IoTHubClientLLHandle, 
-                                                     threadInfo->invokeMethodSavedData.deviceId, 
-                                                     threadInfo->invokeMethodSavedData.moduleId, 
-                                                     threadInfo->invokeMethodSavedData.methodName, 
-                                                     threadInfo->invokeMethodSavedData.methodPayload, 
-                                                     threadInfo->invokeMethodSavedData.timeout, 
-                                                     threadInfo->invokeMethodSavedData.responseStatus, 
-                                                     threadInfo->invokeMethodSavedData.responsePayload, 
-                                                     threadInfo->invokeMethodSavedData.responsePayloadSize);
+    int responseStatus;
+    unsigned char* responsePayload = NULL;
+    size_t responsePayloadSize;
+
+    result = IoTHubClientCore_LL_GenericMethodInvoke(threadInfo->iotHubClientHandle->IoTHubClientLLHandle,
+                                                     threadInfo->invokeMethodSavedData.deviceId,
+                                                     threadInfo->invokeMethodSavedData.moduleId,
+                                                     threadInfo->invokeMethodSavedData.methodName,
+                                                     threadInfo->invokeMethodSavedData.methodPayload,
+                                                     threadInfo->invokeMethodSavedData.timeout,
+                                                     &responseStatus,
+                                                     &responsePayload,
+                                                     &responsePayloadSize);
+
+    if (threadInfo->invokeMethodSavedData.methodInvokeCallback != NULL)
+    {
+        threadInfo->invokeMethodSavedData.methodInvokeCallback(result, responseStatus, responsePayload, responsePayloadSize);
+    }
+
+    if (responsePayload != NULL)
+    {
+        free(responsePayload);
+    }
 
     (void)markThreadReadyToBeGarbageCollected(threadInfo);
     return result;
 }
 
 
-IOTHUB_CLIENT_RESULT IoTHubClientCore_GenericMethodInvoke(IOTHUB_CLIENT_CORE_HANDLE iotHubClientHandle, const char* deviceId, const char* moduleId, const char* methodName, const char* methodPayload, unsigned int timeout, int* responseStatus, unsigned char** responsePayload, size_t* responsePayloadSize)
+IOTHUB_CLIENT_RESULT IoTHubClientCore_GenericMethodInvoke(IOTHUB_CLIENT_CORE_HANDLE iotHubClientHandle, const char* deviceId, const char* moduleId, const char* methodName, const char* methodPayload, unsigned int timeout, IOTHUB_METHOD_INVOKE_CALLBACK methodInvokeCallback, void* context)
 {
     IOTHUB_CLIENT_RESULT result;
     HTTPWORKER_THREAD_INFO *threadInfo;
 
-    if ((threadInfo = allocateMethodInvoke(iotHubClientHandle, deviceId, moduleId, methodName, methodPayload, timeout, responseStatus, responsePayload, responsePayloadSize)) == NULL)
+    if ((threadInfo = allocateMethodInvoke(iotHubClientHandle, deviceId, moduleId, methodName, methodPayload, timeout, methodInvokeCallback, context)) == NULL)
     {
         LogError("failed allocation");
         result = IOTHUB_CLIENT_ERROR;
@@ -2416,4 +2427,8 @@ IOTHUB_CLIENT_RESULT IoTHubClientCore_GenericMethodInvoke(IOTHUB_CLIENT_CORE_HAN
     else
     {
         result = IOTHUB_CLIENT_OK;
+    }
+    return result;
+}
 #endif /* USE_EDGE_MODULES */
+

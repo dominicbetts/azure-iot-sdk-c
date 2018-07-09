@@ -95,34 +95,35 @@ IOTHUB_MODULE_CLIENT_HANDLE IoTHubModuleClient_CreateFromEnvironment(IOTHUB_CLIE
     return IoTHubClientCore_CreateFromEnvironment(protocol);
 }
 
-IOTHUB_CLIENT_RESULT IoTHubModuleClient_DeviceMethodInvokeAsync(IOTHUB_MODULE_CLIENT_HANDLE iotHubModuleClientHandle, const char* deviceId, const char* methodName, const char* methodPayload, unsigned int timeout, int* responseStatus, unsigned char** responsePayload, size_t* responsePayloadSize)
+IOTHUB_CLIENT_RESULT IoTHubModuleClient_DeviceMethodInvokeAsync(IOTHUB_MODULE_CLIENT_HANDLE iotHubModuleClientHandle, const char* deviceId, const char* methodName, const char* methodPayload, unsigned int timeout, IOTHUB_METHOD_INVOKE_CALLBACK methodInvokeCallback, void* context)
 {
     IOTHUB_CLIENT_RESULT result;
 
-    if ((iotHubModuleClientHandle == NULL) || (deviceId == NULL) || (methodName == NULL) || (methodPayload == NULL) || (responseStatus == NULL) || (responsePayload == NULL) || (responsePayloadSize == NULL))
+    if ((iotHubModuleClientHandle == NULL) || (deviceId == NULL) || (methodName == NULL) || (methodPayload == NULL))
     {
         LogError("Argument cannot be NULL");
         result = IOTHUB_CLIENT_INVALID_ARG;
     }
     else
     {
-        result = IoTHubClientCore_GenericMethodInvoke((IOTHUB_CLIENT_CORE_HANDLE)iotHubModuleClientHandle, deviceId, NULL, methodName, methodPayload, timeout, responseStatus, responsePayload, responsePayloadSize);
+        result = IoTHubClientCore_GenericMethodInvoke((IOTHUB_CLIENT_CORE_HANDLE)iotHubModuleClientHandle, deviceId, NULL, methodName, methodPayload, timeout, methodInvokeCallback, context);
     }
     return result;
 }
 
-IOTHUB_CLIENT_RESULT IoTHubModuleClient_ModuleMethodInvokeAsync(IOTHUB_MODULE_CLIENT_HANDLE iotHubModuleClientHandle, const char* deviceId, const char* moduleId, const char* methodName, const char* methodPayload, unsigned int timeout, int* responseStatus, unsigned char** responsePayload, size_t* responsePayloadSize)
+IOTHUB_CLIENT_RESULT IoTHubModuleClient_ModuleMethodInvokeAsync(IOTHUB_MODULE_CLIENT_HANDLE iotHubModuleClientHandle, const char* deviceId, const char* moduleId, const char* methodName, const char* methodPayload, unsigned int timeout, IOTHUB_METHOD_INVOKE_CALLBACK methodInvokeCallback, void* context)
 {
     IOTHUB_CLIENT_RESULT result;
 
-    if ((iotHubModuleClientHandle == NULL) || (deviceId == NULL) || (moduleId == NULL) || (methodName == NULL) || (methodPayload == NULL) || (responseStatus == NULL) || (responsePayload == NULL) || (responsePayloadSize == NULL))
+    if ((iotHubModuleClientHandle == NULL) || (deviceId == NULL) || (moduleId == NULL) || (methodName == NULL) || (methodPayload == NULL))
     {
         LogError("Argument cannot be NULL");
         result = IOTHUB_CLIENT_INVALID_ARG;
     }
     else
     {
-        result = IoTHubClientCore_GenericMethodInvoke((IOTHUB_CLIENT_CORE_HANDLE)iotHubModuleClientHandle, deviceId, moduleId, methodName, methodPayload, timeout, responseStatus, responsePayload, responsePayloadSize);
+        result = IoTHubClientCore_GenericMethodInvoke((IOTHUB_CLIENT_CORE_HANDLE)iotHubModuleClientHandle, deviceId, moduleId, methodName, methodPayload, timeout, methodInvokeCallback, context);
+    }
     return result;
 }
 
