@@ -40,10 +40,6 @@ int main(void)
     }
     else
     {
-        int response;
-        unsigned char* responsePayload;
-        size_t responsePayloadSize;
-
         // Invoke 'targetMethodName' on module ''targetModule'.
         IOTHUB_CLIENT_RESULT invokeAsyncResult = IoTHubModuleClient_ModuleMethodInvokeAsync(handle, targetDevice, targetModule, targetMethodName, targetMethodPayload, 1, ModuleMethodInvokeCallback, (void*)0x1234);
         if (invokeAsyncResult == IOTHUB_CLIENT_OK)
