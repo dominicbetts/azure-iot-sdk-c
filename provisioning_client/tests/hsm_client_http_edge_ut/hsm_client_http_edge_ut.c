@@ -567,6 +567,7 @@ static void set_expected_calls_construct_json_signing_blob()
     STRICT_EXPECTED_CALL(BUFFER_create(IGNORED_PTR_ARG, IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(json_free_serialized_string(TEST_CHAR_PTR));
     STRICT_EXPECTED_CALL(json_object_clear(IGNORED_NUM_ARG));
+    STRICT_EXPECTED_CALL(json_value_free(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
     STRICT_EXPECTED_CALL(STRING_delete(IGNORED_NUM_ARG));
@@ -752,24 +753,25 @@ TEST_FUNCTION(hsm_client_http_edge_sign_data_http_fail)
         10, // STRING_c_str
         14, // json_free_serialized_string
         15, // json_object_clear
-        16, // STRING_delete
+        16 , // json_value_free
         17, // STRING_delete
         18, // STRING_delete
-        19, // STRING_c_str
-        20, // socketio_get_interface_description
-        25, // BUFFER_u_char
-        26, // get_time
-        28, // uhttp_client_dowork
-        29, // get_time
-        30, // uhttp_client_dowork
-        32, // get_time
-        33, // HTTPHeaders_Free
-        34, // uhttp_client_destroy
-        40, // json_object_clear
-        41, // json_value_free
-        42, // BUFFER_delete
+        19, // STRING_delete
+        20, // STRING_c_str
+        21, // socketio_get_interface_description
+        26, // BUFFER_u_char
+        27, // get_time
+        29, // uhttp_client_dowork
+        30, // get_time
+        31, // uhttp_client_dowork
+        33, // get_time
+        34, // HTTPHeaders_Free
+        35, // uhttp_client_destroy
+        41, // json_object_clear
+        42, // json_value_free
         43, // BUFFER_delete
-        44 // STRING_delete
+        44, // BUFFER_delete
+        45 // STRING_delete
     };
 
     // act
