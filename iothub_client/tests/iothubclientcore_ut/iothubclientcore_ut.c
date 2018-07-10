@@ -152,7 +152,7 @@ MOCKABLE_FUNCTION(, int, test_incoming_method_callback, const char*, method_name
 MOCKABLE_FUNCTION(, int, test_method_callback, const char*, method_name, const unsigned char*, payload, size_t, size, unsigned char**, response, size_t*, resp_size, void*, userContextCallback);
 MOCKABLE_FUNCTION(, void, test_file_upload_callback, IOTHUB_CLIENT_FILE_UPLOAD_RESULT, result, void*, userContextCallback);
 MOCKABLE_FUNCTION(, int, my_DeviceMethodCallback, const char*, method_name, const unsigned char*, payload, size_t, size, unsigned char**, response, size_t*, resp_size, void*, userContextCallback);
-MOCKABLE_FUNCTION(, void, test_method_invoke_callback, IOTHUB_CLIENT_RESULT, result, int, responseStatus, unsigned char*, responsePayload, size_t, responsePayloadSize);
+MOCKABLE_FUNCTION(, void, test_method_invoke_callback, IOTHUB_CLIENT_RESULT, result, int, responseStatus, unsigned char*, responsePayload, size_t, responsePayloadSize, void*, userContextCallBack);
 
 
 
@@ -4001,8 +4001,11 @@ static void set_expected_calls_for_IotHubClientCore_GenericMethodInvoke(METHOD_I
 static void set_expected_calls_For_MethodInvokeThread()
 {
     int responseStatus = 200;
-    unsigned char* responseData = (unsigned char*)1220;
     int responseSize = 1221;
+
+    // We need to explicitly allocate this here because the core always frees a real pointer here.
+    unsigned char* responseData = my_gballoc_malloc(1);
+    ASSERT_IS_NOT_NULL_WITH_MSG(responseData, "failed allocating responseData");
 
     STRICT_EXPECTED_CALL(IoTHubClientCore_LL_GenericMethodInvoke(TEST_IOTHUB_CLIENT_CORE_LL_HANDLE, IGNORED_PTR_ARG, IGNORED_PTR_ARG, 
                                                                  IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_NUM_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG, IGNORED_PTR_ARG))
@@ -4010,8 +4013,9 @@ static void set_expected_calls_For_MethodInvokeThread()
                             .CopyOutArgumentBuffer(8, &responseData, sizeof(responseData))
                             .CopyOutArgumentBuffer(9, &responseSize, sizeof(responseSize))
                             ;
-    STRICT_EXPECTED_CALL(test_method_invoke_callback(IOTHUB_CLIENT_OK, 200, (unsigned char*)1220, 888));
+    STRICT_EXPECTED_CALL(test_method_invoke_callback(IOTHUB_CLIENT_OK, responseStatus, responseData, responseSize, CALLBACK_CONTEXT));
 
+    STRICT_EXPECTED_CALL(gballoc_free(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(Lock(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(Unlock(IGNORED_PTR_ARG));
     STRICT_EXPECTED_CALL(ThreadAPI_Exit(0));
@@ -4048,7 +4052,7 @@ static void IoTHubClientCore_GenericMethodInvoke_Impl(METHOD_INVOKE_TEST_TARGET 
     EXPECTED_CALL(singlylinkedlist_get_head_item(TEST_SLL_HANDLE))
         .SetReturn(TEST_LIST_HANDLE);
 
-    setup_gargageCollection(my_malloc_items[2], true);
+    setup_gargageCollection(my_malloc_items[3], true);
     setup_IothubClient_Destroy_after_garbage_collection();
    
     IoTHubClientCore_Destroy(iothub_handle);

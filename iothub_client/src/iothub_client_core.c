@@ -2396,7 +2396,7 @@ static int uploadMethodInvoke_thread(void* data)
 
     if (threadInfo->invokeMethodSavedData.methodInvokeCallback != NULL)
     {
-        threadInfo->invokeMethodSavedData.methodInvokeCallback(result, responseStatus, responsePayload, responsePayloadSize);
+        threadInfo->invokeMethodSavedData.methodInvokeCallback(result, responseStatus, responsePayload, responsePayloadSize, threadInfo->context);
     }
 
     if (responsePayload != NULL)
@@ -2414,7 +2414,12 @@ IOTHUB_CLIENT_RESULT IoTHubClientCore_GenericMethodInvoke(IOTHUB_CLIENT_CORE_HAN
     IOTHUB_CLIENT_RESULT result;
     HTTPWORKER_THREAD_INFO *threadInfo;
 
-    if ((threadInfo = allocateMethodInvoke(iotHubClientHandle, deviceId, moduleId, methodName, methodPayload, timeout, methodInvokeCallback, context)) == NULL)
+    if ((iotHubClientHandle == NULL) || (deviceId == NULL) || (methodName == NULL) || (methodPayload == NULL))
+    {
+        LogError("invalid parameter");
+        result = IOTHUB_CLIENT_INVALID_ARG;
+    }
+    else if ((threadInfo = allocateMethodInvoke(iotHubClientHandle, deviceId, moduleId, methodName, methodPayload, timeout, methodInvokeCallback, context)) == NULL)
     {
         LogError("failed allocation");
         result = IOTHUB_CLIENT_ERROR;
